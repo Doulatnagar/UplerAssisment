@@ -1,0 +1,37 @@
+body {
+    text-align: center;
+    margin: 20px;
+  }
+  
+  #dynamicTable {
+    margin: 20px auto;
+    border-collapse: collapse;
+  }
+  
+  #dynamicTable td {
+    width: 100px;
+    height: 100px;
+    border: 1px solid #000;
+    text-align: center;
+    vertical-align: middle;
+  }
+  
+  .box {
+    width: 80px;
+    height: 80px;
+    line-height: 80px;
+    text-align: center;
+    color: #000000;
+    font-weight: bold;
+    border-radius: 5px;
+    margin: auto;
+    cursor: grab;
+    user-select: none;
+    transition: opacity 0.3s;
+  }
+  
+  .box:active {
+    cursor: grabbing;
+    opacity: 0.5;
+  }
+  
