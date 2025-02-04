@@ -56,16 +56,26 @@ document.addEventListener("DOMContentLoaded", () => {
   addRowButton.addEventListener("click", () => {
     const rowCount = table.rows.length;
     const newRow = table.insertRow();
+    const rowId = rowCount + 1;
+    const cells = [];
     for (let i = 0; i < 3; i++) {
       const cell = newRow.insertCell();
-      const boxId = `box${rowCount + 1}${i + 1}`;
-      const boxValue = (rowCount * 3 + i + 1) * 100;
+      const boxId = `box${rowId}${i + 1}`;
+      const boxValue = (rowId * 3 + i + 1) * 100;
       const box = createBox(boxId, boxValue);
       cell.appendChild(box);
+      cells.push({ boxId, boxValue });
     }
     saveState({
       undo: () => table.deleteRow(rowCount),
-      redo: () => addRowButton.click(),
+      redo: () => {
+        const restoredRow = table.insertRow(rowCount);
+        cells.forEach((cellData) => {
+          const cell = restoredRow.insertCell();
+          const box = createBox(cellData.boxId, cellData.boxValue);
+          cell.appendChild(box);
+        });
+      },
     });
   });
 
@@ -141,6 +151,4 @@ document.addEventListener("DOMContentLoaded", () => {
       .toString(16)
       .padStart(6, "0")}`;
   }
-
-  initializeTable();
 });
