@@ -4,10 +4,65 @@ document.addEventListener("DOMContentLoaded", () => {
   const undoButton = document.getElementById("undo");
   const redoButton = document.getElementById("redo");
 
+  class Command {
+    redo() {}
+    undo() {}
+  }
+
+  class AddRowCommand extends Command {
+    constructor(table) {
+      super();
+      this.table = table;
+      this.rowIndex = this.table.rows.length;
+      this.row = this.createRow();
+    }
+
+    createRow() {
+      const newRow = this.table.insertRow();
+      for (let i = 0; i < 3; i++) {
+        const cell = newRow.insertCell();
+        const boxId = `box${this.rowIndex + 1}${i + 1}`;
+        const boxValue = (this.rowIndex * 3 + i + 1) * 100;
+        const box = createBox(boxId, boxValue);
+        cell.appendChild(box);
+      }
+      return newRow;
+    }
+
+    redo() {
+      this.table.appendChild(this.row);
+    }
+
+    undo() {
+      this.table.deleteRow(this.rowIndex);
+    }
+  }
+
+  class SwapBoxesCommand extends Command {
+    constructor(sourceCell, targetCell) {
+      super();
+      this.sourceCell = sourceCell;
+      this.targetCell = targetCell;
+      this.sourceBox = sourceCell.firstElementChild;
+      this.targetBox = targetCell.firstElementChild;
+    }
+
+    redo() {
+      this.targetCell.appendChild(this.sourceBox);
+      this.sourceCell.appendChild(this.targetBox);
+    }
+
+    undo() {
+      this.sourceCell.appendChild(this.sourceBox);
+      this.targetCell.appendChild(this.targetBox);
+    }
+  }
+
   const history = [];
   let future = [];
 
-  function saveState(action) {
+  function executeCommand(action) {
+    action.redo();
     history.push(action);
     future = [];
   }
@@ -54,33 +109,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   addRowButton.addEventListener("click", () => {
-    const rowCount = table.rows.length;
-    const newRow = table.insertRow();
-    const rowId = rowCount + 1;
-    const cells = [];
-    for (let i = 0; i < 3; i++) {
-      const cell = newRow.insertCell();
-      const boxId = `box${rowId}${i + 1}`;
-      const boxValue = (rowId * 3 + i + 1) * 100;
-      const box = createBox(boxId, boxValue);
-      cell.appendChild(box);
-      cells.push({ boxId, boxValue });
-    }
-    saveState({
-      undo: () => table.deleteRow(rowCount),
-      redo: () => {
-        const restoredRow = table.insertRow(rowCount);
-        cells.forEach((cellData) => {
-          const cell = restoredRow.insertCell();
-          const box = createBox(cellData.boxId, cellData.boxValue);
-          cell.appendChild(box);
-        });
-      },
-    });
+    executeCommand(new AddRowCommand(table));
   });
 
   undoButton.addEventListener("click", undoAction);
   redoButton.addEventListener("click", redoAction);
+
+  let draggedElement = null;
 
   table.addEventListener("dragstart", (e) => {
     if (e.target.className !== "box") return;
@@ -95,37 +130,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!draggedElement) return;
 
     const targetCell = e.target.closest("td");
-    if (!targetCell) return;
+    if (!targetCell || targetCell === draggedElement.parentElement) return;
 
-    const sourceCell = draggedElement.parentElement;
-    if (sourceCell === targetCell) {
-      draggedElement = null;
-      return;
-    }
-
-    const destinationBox = targetCell.firstElementChild;
-
-    const fragment = new DocumentFragment();
-    fragment.appendChild(draggedElement);
-    sourceCell.appendChild(destinationBox);
-    targetCell.appendChild(fragment);
-
-    const cachedSource = sourceCell;
-    const cachedDest = targetCell;
-    const cachedDraggedBox = draggedElement;
-    const cachedDestBox = destinationBox;
-
-    saveState({
-      undo: () => {
-        cachedSource.appendChild(cachedDraggedBox);
-        cachedDest.appendChild(cachedDestBox);
-      },
-      redo: () => {
-        cachedDest.appendChild(cachedDraggedBox);
-        cachedSource.appendChild(cachedDestBox);
-      },
-    });
-
+    executeCommand(new SwapBoxesCommand(draggedElement.parentElement, targetCell));
     draggedElement = null;
   });
 
@@ -135,15 +142,9 @@ document.addEventListener("DOMContentLoaded", () => {
     draggedElement = null;
   });
 
-  let lastDragOverTarget = null;
   table.addEventListener("dragover", (e) => {
     e.preventDefault();
-
-    const currentTarget = e.target.closest("td");
-    if (currentTarget && currentTarget !== lastDragOverTarget) {
-      lastDragOverTarget = currentTarget;
-      e.dataTransfer.dropEffect = "move";
-    }
+    e.dataTransfer.dropEffect = "move";
   });
 
   function getRandomColor() {
